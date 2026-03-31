@@ -1,0 +1,43 @@
+name: "Update Helm values.yaml tag"
+description: "Updates image tag in Helm repo and pushes changes"
+
+inputs:
+  token:
+    description: "GitHub token"
+    required: true
+
+  commit_id:
+    description: "New image tag"
+    required: true
+
+  path:
+    description: "Path to Helm chart root (e.g. helm/charts/deviceservice)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Helm Repo
+      uses: actions/checkout@v3
+      with:
+        repository: maxxrl/home-platform
+        token: ${{ inputs.token }}
+        path: helm-repo
+
+    - name: Update values.yaml
+      shell: bash
+      run: |
+        FILE="helm-repo/${{ inputs.path }}/values.yaml"
+        sed -i "s/tag: .*/tag: \"${{ inputs.commit_id }}\"/" "$FILE"
+
+    - name: Commit & push
+      shell: bash
+      run: |
+        cd helm-repo
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+
+        git add ${{ inputs.path }}/values.yaml
+
+        git diff --cached --quiet || git commit -m "ci: update image tag to ${{ inputs.commit_id }}"
+        git push
